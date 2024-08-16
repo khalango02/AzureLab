@@ -1,6 +1,7 @@
 # cluster-k8s-terraform-ansible
 
 PRÉ-REQUISITOS ==============================================================================================================================
+
 .AZURE-CLI
 .TERRAFORM
 .SSH
@@ -9,6 +10,7 @@ PRÉ-REQUISITOS ================================================================
 
 
 TERRAFORM ===================================================================================================================================
+
 .Localmente rodar o comando: terraform init
 .Localmente rodar o comando: terraform plan
 .Localmente rodar o comando: terraform apply
@@ -17,6 +19,7 @@ TERRAFORM ======================================================================
 
 
 ANSIBLE =====================================================================================================================================
+
 .Acessar todas as máquinas.
 .sudo apt update
 .sudo apt install ansible
@@ -35,6 +38,7 @@ ANSIBLE ========================================================================
 
 
 SERVICE =====================================================================================================================================
+
 .Subir o arquivo quickstart.yaml na máquina master
 .Rodar o comando na master: kubectl apply -f quickstart.yaml
 .Acompanhe o deploy: kubectl get pods -w
