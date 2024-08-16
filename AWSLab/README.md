@@ -1,4 +1,4 @@
-# Learn Terraform - Provision an EKS Cluster
+# Provision an EKS Cluster
 
 .Terraform init
 .Terraform plan
