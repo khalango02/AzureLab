@@ -1,0 +1,3 @@
+# Criar cluster Kubernetes
+- import_playbook: requisitos-workers.yml
+- import_playbook: workers-workers.yml

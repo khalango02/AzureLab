@@ -1,0 +1,142 @@
+
+- name: Preparar servidores para o ambiente Kubernetes 
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Updates
+      apt:
+        update_cache: yes
+
+    - name: Instalar pacotes necessarios 
+      apt:
+        name: '{{ item }}'
+        state: present
+      loop:
+        - curl
+        - apt-transport-https
+        - ca-certificates
+
+    - name: Desabilitar SWAP
+      shell: |
+        swapoff -a
+
+    - name: Desabilitar SWAP no arquivo fstab
+      replace:
+        path: /etc/fstab
+        regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+        replace: '# \1'
+
+    - name: Criar um arquivo vazio para o modulo containerd
+      copy:
+        content: ""
+        dest: /etc/modules-load.d/containerd.conf
+        force: no
+
+    - name: Configurar modulo para o containerd
+      blockinfile:
+        path: /etc/modules-load.d/containerd.conf
+        block: |
+          overlay
+          br_netfilter
+
+    - name: Criar um arquivo vazio para o K8S sysctl parameters
+      copy:
+        content: ""
+        dest: /etc/sysctl.d/99-kubernetes-cri.conf
+        force: no
+
+    - name: Configurar parametros sysctl parameters para kubernetes
+      lineinfile:
+        path: /etc/sysctl.d/99-kubernetes-cri.conf
+        line: "{{ item }}"
+      with_items:
+        - "net.bridge.bridge-nf-call-iptables  = 1"
+        - "net.ipv4.ip_forward                 = 1"
+        - "net.bridge.bridge-nf-call-ip6tables = 1"
+
+    - name: Aplicar parametros sysctl 
+      command: sysctl --system
+
+    - name: Adicionar chave Docker apt-key
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker-apt-keyring.asc
+        mode: "0644"
+        force: true
+
+    - name: Adicionar repositorio Docker's APT
+      apt_repository:
+        repo: "deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }} signed-by=/etc/apt/keyrings/docker-apt-keyring.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        update_cache: yes
+
+    - name: Adicionar chave Kubernetes apt-key
+      get_url:
+        url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+        dest: /etc/apt/keyrings/kubernetes-apt-keyring.asc
+        mode: "0644"
+        force: true
+
+    - name: Adicionar repositorio Kubernetes APT
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
+        state: present
+        update_cache: yes
+
+    - name: Instalar containerd
+      apt:
+        name: containerd.io
+        state: present
+
+    - name: Criar diretorio containerd 
+      file:
+        path: /etc/containerd
+        state: directory
+
+    - name: Adicionar configuracao containerd
+      shell: /usr/bin/containerd config default > /etc/containerd/config.toml
+
+    - name: Configurar Systemd cgroup driver para containerd
+      lineinfile:
+        path: /etc/containerd/config.toml
+        regexp: "            SystemdCgroup = false"
+        line: "            SystemdCgroup = true"
+
+    - name: Habilitar o servico containerd e iniciar o servico
+      systemd:
+        name: containerd
+        state: restarted
+        enabled: yes
+        daemon-reload: yes
+
+    - name: Instalar Kubelet na versao 1.29.*
+      apt:
+        name: kubelet=1.29.*
+        state: present
+        update_cache: true
+
+    - name: Instalar Kubeadm na versao 1.29.* 
+      apt:
+        name: kubeadm=1.29.*
+        state: present
+
+    - name: Habilitar o servico Kubelet 
+      service:
+        name: kubelet
+        enabled: yes
+
+    - name: Carregar o kernel modulo br_netfilter
+      modprobe:
+        name: br_netfilter
+        state: present
+
+    - name: Definir bridge-nf-call-iptables
+      sysctl:
+        name: net.bridge.bridge-nf-call-iptables
+        value: 1
+
+    - name: Definir ip_forward
+      sysctl:
+        name: net.ipv4.ip_forward
+        value: 1
+

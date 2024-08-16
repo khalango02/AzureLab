@@ -1,0 +1,4 @@
+# Criar cluster Kubernetes
+- import_playbook: requisitos-master.yml
+- import_playbook: master.yml
+- import_playbook: workers-master.yml

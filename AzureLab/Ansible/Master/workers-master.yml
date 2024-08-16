@@ -1,0 +1,11 @@
+- name: Criar o comando de Join no Master Node
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Executar o comando para gerar o token
+      shell: kubeadm token create --print-join-command
+      register: join_command_raw
+
+    - name: Criar um Fact do comando de Join
+      set_fact:
+        join_command: "{{ join_command_raw.stdout_lines[0] }}"

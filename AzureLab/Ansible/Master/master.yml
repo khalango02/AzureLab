@@ -1,0 +1,54 @@
+- name: Configurar o servidor control plane
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Criar um arquivo vazio para a configuracao do Kubeadm
+      copy:
+        content: ""
+        dest: /etc/kubernetes/kubeadm-config.yaml
+        force: no
+
+    - name: Configurar container runtime
+      blockinfile:
+        path: /etc/kubernetes/kubeadm-config.yaml
+        block: |
+          kind: ClusterConfiguration
+          apiVersion: kubeadm.k8s.io/v1beta3
+          networking:
+            podSubnet: "10.244.0.0/16"
+          ---
+          kind: KubeletConfiguration
+          apiVersion: kubelet.config.k8s.io/v1beta1
+          runtimeRequestTimeout: "15m"
+          cgroupDriver: "systemd"
+          systemReserved:
+            cpu: 100m
+            memory: 350M
+          kubeReserved:
+            cpu: 100m
+            memory: 50M
+          enforceNodeAllocatable:
+          - pods
+
+    - name: Inicializar o cluster
+      shell: kubeadm init --config /etc/kubernetes/kubeadm-config.yaml 
+
+    - name: Criar diretorio .kube na pasta home do usuario adminazure
+      become: yes
+      become_user: "adminazure"
+      file:
+        path: /home/adminazure/.kube
+        state: directory
+        mode: 0755
+
+    - name: Copiar admin.conf para kube config do usuario adminazure
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/adminazure/.kube/config
+        remote_src: yes
+        owner: "adminazure"
+
+    - name: Instalar Pod Network
+      become: yes
+      become_user: "adminazure"
+      shell: kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml 
